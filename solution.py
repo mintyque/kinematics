@@ -25,6 +25,21 @@ def rot2eul(r):
     With that in mind,
     φ = arctan2(R12/sin(ψ), R13/sin(θ))
 
+    If ψ = pi/2, then cos(ψ) = 0 and we cannot use arctan to solve for this angle.
+    But, as we already know the value of θ, we can use it to compute angle ψ from R21.
+    ψ = arcsin(R21/sin(θ))
+
+    If ψ and θ are zero, then sin(ψ) and sin(θ) are zero too and we can't compute
+    last angle by division. But, in this case, R22 becomes equal just to cos(φ),
+    as sines become zero and other cosines become 1.
+    φ = arccos(R22)
+
+    If just one of ψ and θ is zero, we still can't use division as we wanted. But,
+    in this case, we can take R12 or R13, depending on which angle is not zero,
+    and use arcsin or arccos respectively.
+    φ = arccos(R13/sin(θ))
+    φ = arcsin(R12/sin(ψ))
+
     Parameters
     ----------
     r
@@ -34,9 +49,25 @@ def rot2eul(r):
     -------
     Tuple of three Euclidian angles, in the order ψ - θ - φ
     """
+    theta = 0
+    psi = 0
+    phi = 0
+
     theta = np.arccos(r[1][1])
-    psi = np.arctan2(r[2][1], r[3][1])
-    phi = np.arctan2(r[1][2]/np.sin(psi), r[1][3]/np.sin(theta))
+
+    if r[3][1].equals(np.sin(theta)):
+        psi = np.arcsin(r[2][1]/np.sin(theta))
+    else:
+        psi = np.arctan2(r[2][1], r[3][1])
+
+    if theta.equals(0) and not psi.equals(0):
+        phi = np.arcsin(r[1][2]/np.sin(psi))
+    elif psi.equals(0) and not theta.equals(0):
+        phi = np.arccos(r[1][3]/np.sin(theta))
+    elif psi.equals(0) and theta.equals(0):
+        phi = np.arccos(r[2][2])
+    else:
+        phi = np.arctan2(r[1][2]/np.sin(psi), r[1][3]/np.sin(theta))
     return psi, theta, phi
 
 
@@ -130,6 +161,7 @@ def fk(j1, j2, j3, j4, j5, j6):
                    [0, 1, 0, 0],
                    [-np.sin(j6), 0, np.cos(j6), 0],
                    [0, 0, 0, 1]])
+
     t1 = np.array([[0, 0, 0, 0],
                    [0, 0, 0, 312],
                    [0, 0, 0, 670],
@@ -146,5 +178,6 @@ def fk(j1, j2, j3, j4, j5, j6):
                    [0, 0, 0, 215],
                    [0, 0, 0, 0],
                    [0, 0, 0, 1]])
+
     ht = np.dot(r6, np.dot(t5, np.dot(r5, np.dot(t34, np.dot(r4, np.dot(r3, np.dot(t2, np.dot(r2, np.dot(t1, r1)))))))))
     return ht
